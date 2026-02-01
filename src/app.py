@@ -5,11 +5,13 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
 from pathlib import Path
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
@@ -130,3 +132,83 @@ def unregister_from_activity(activity_name: str, email: str):
     # Remove student
     activity["participants"].remove(email)
     return {"message": f"Unregistered {email} from {activity_name}"}
+
+# --- Admin support (simple token-based auth) ---
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "secret-token")
+
+
+def admin_auth(x_admin_token: str = Header(None)):
+    if x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token")
+    return True
+
+
+class ActivityIn(BaseModel):
+    name: str
+    description: str
+    schedule: str
+    max_participants: int
+
+
+class ActivityUpdate(BaseModel):
+    description: Optional[str] = None
+    schedule: Optional[str] = None
+    max_participants: Optional[int] = None
+
+
+@app.get("/admin/activities")
+def admin_get_activities(token: bool = Depends(admin_auth)):
+    return activities
+
+
+@app.post("/admin/activities", status_code=201)
+def admin_create_activity(payload: ActivityIn, token: bool = Depends(admin_auth)):
+    if payload.name in activities:
+        raise HTTPException(status_code=400, detail="Activity already exists")
+    activities[payload.name] = {
+        "description": payload.description,
+        "schedule": payload.schedule,
+        "max_participants": payload.max_participants,
+        "participants": []
+    }
+    return {"message": f"Activity '{payload.name}' created"}
+
+
+@app.put("/admin/activities/{activity_name}")
+def admin_update_activity(activity_name: str, payload: ActivityUpdate, token: bool = Depends(admin_auth)):
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    activity = activities[activity_name]
+    if payload.description is not None:
+        activity["description"] = payload.description
+    if payload.schedule is not None:
+        activity["schedule"] = payload.schedule
+    if payload.max_participants is not None:
+        activity["max_participants"] = payload.max_participants
+    activities[activity_name] = activity
+    return {"message": f"Activity '{activity_name}' updated"}
+
+
+@app.delete("/admin/activities/{activity_name}")
+def admin_delete_activity(activity_name: str, token: bool = Depends(admin_auth)):
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    del activities[activity_name]
+    return {"message": f"Activity '{activity_name}' deleted"}
+
+
+@app.get("/admin/activities/{activity_name}/participants")
+def admin_list_participants(activity_name: str, token: bool = Depends(admin_auth)):
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return activities[activity_name]["participants"]
+
+
+@app.delete("/admin/activities/{activity_name}/participants")
+def admin_remove_participant(activity_name: str, email: str, token: bool = Depends(admin_auth)):
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    if email not in activities[activity_name]["participants"]:
+        raise HTTPException(status_code=400, detail="Student is not signed up for this activity")
+    activities[activity_name]["participants"].remove(email)
+    return {"message": f"Removed {email} from {activity_name}"}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — Mergington Activities</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; padding: 1rem; }
+      h1 { margin-bottom: 0.25rem }
+      #activities { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .card { border: 1px solid #ddd; padding: 1rem; border-radius: 6px; background: #fff }
+      .muted { color: #666; font-size: 0.9rem }
+      .actions { margin-top: 0.75rem }
+      button { margin-right: 0.5rem }
+      form { margin-bottom: 1.25rem }
+      label { display:block; margin-top:0.5rem }
+      input, textarea { width: 100%; padding: 6px; box-sizing: border-box }
+    </style>
+  </head>
+  <body>
+    <h1>Admin — Activities</h1>
+    <p class="muted">This admin UI uses a simple token header <code>X-ADMIN-TOKEN</code> to authenticate. The default token (for local testing) is <code>secret-token</code>. Set the <code>ADMIN_TOKEN</code> env var on the server for production.</p>
+
+    <section id="create">
+      <h3>Create activity</h3>
+      <form id="create-form">
+        <label for="name">Name</label>
+        <input id="name" required />
+        <label for="description">Description</label>
+        <textarea id="description" rows="2"></textarea>
+        <label for="schedule">Schedule</label>
+        <input id="schedule" />
+        <label for="max">Max Participants</label>
+        <input id="max" type="number" min="1" value="10" />
+        <div style="margin-top:0.5rem"><button type="submit">Create</button></div>
+      </form>
+    </section>
+
+    <section>
+      <h3>Existing activities</h3>
+      <div id="activities">Loading…</div>
+    </section>
+
+    <script src="/static/admin.js"></script>
+  </body>
+</html>
